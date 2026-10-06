@@ -6,9 +6,9 @@
 
 Render Spine skeletal animations from Unity games into mp4 — frame-by-frame with the official spine-webgl runtime.
 
-![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
-![Python](https://img.shields.io/badge/python-3%2Ex-3776AB?style=flat-square)
-![ffmpeg](https://img.shields.io/badge/ffmpeg-required-05874b?style=flat-square)
+[![License](assets/badges/license-mit.png)](LICENSE)
+[![Python](assets/badges/python.png)](https://www.python.org/)
+[![ffmpeg](assets/badges/ffmpeg.png)](https://ffmpeg.org/)
 
 </div>
 
@@ -51,7 +51,8 @@ Render Spine skeletal animations from Unity games into mp4 — frame-by-frame wi
 ├── SKILL.md          Agent 使用说明（流程 / 坑清单 / 复用清单）
 ├── scripts/          解包 · 服务器 · 渲染页 · 驱动 · 编码 · 说明生成
 ├── docs/pipeline.md  技术细节与实战踩坑（必读）
-└── examples/         素材格式说明（不含版权资源）
+├── examples/         素材格式说明（不含版权资源）
+└── assets/           徽章图片（PNG 本地文件，任何预览器都能正常显示）
 ```
 
 ## 说明
