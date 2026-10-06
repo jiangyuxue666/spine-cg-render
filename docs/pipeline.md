@@ -109,9 +109,9 @@ ThreadingHTTPServer.request_queue_size = 128
 - 每个骨架渲染前重新加载页面，同时释放渲染内存；
 - 自动化侧捕获断连，重启后按文件数续跑；单次中断仅损失数十秒。
 
-### 5.5 自动化工具环境异常时的清理
+### 5.5 浏览器驱动异常时的清理
 
-自动化后台进程可能因残留端口文件（`~/.config/browser-harness/runtime/bu-default.port`）而无法重启（Windows 下报 `PermissionError`）。处理方式：结束命令行中带 harness 标识的 python / chrome 进程（注意不要终止正在使用的浏览器），清空 runtime 目录内容后重试。
+浏览器驱动进程可能因残留的端口 / 锁文件而无法重启（Windows 下报 `PermissionError`）。处理方式：结束该驱动自身的 python / chrome 进程（按命令行标识筛选，避免终止其他浏览器进程），清空其 runtime 目录内容后重试。
 
 ## 6. 取景（影响成片效果的关键步骤）
 

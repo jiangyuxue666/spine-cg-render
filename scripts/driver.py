@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Driver executed inside browser_exec calls (exec this file, then call functions).
+"""Browser-driver script for CDP sessions (load it into the page, then call its functions).
 Provides run_skeleton(dirname, name, ...) which renders all CG animations frame-by-frame
 into the frames root via POST /save, with resumable chunks."""
 import json, time, os, re
@@ -23,7 +23,7 @@ def is_cg(n):
     return True
 
 def js_retry(expr, tries=4, delay=3.0):
-    """js() with retry on transient harness/ws errors."""
+    """js() with retry on transient driver/websocket errors."""
     last = None
     for k in range(tries):
         try:

@@ -4,7 +4,7 @@ import os, subprocess, shutil
 
 FRAMES = r"<FRAMES_ROOT>"  # ← CHANGE: frame dir from the render step
 OUT = r"<GAME_DIR>\CG_提取\动态CG"  # ← CHANGE: video output dir
-SKIP_DIRS = set()  # optional: non-scene dirs to skip (e.g. leftover test output)
+SKIP_DIRS = set()  # optional: extra non-scene subdirectories to skip
 
 ffmpeg = shutil.which('ffmpeg')
 if not ffmpeg:
