@@ -4,7 +4,6 @@
 
 **Spine 2D 骨骼动画 → 动态 CG 视频渲染工具链**
 
-[![License](assets/badges/license-mit.png)](LICENSE)
 [![Python](assets/badges/python.png)](https://www.python.org/)
 [![ffmpeg](assets/badges/ffmpeg.png)](https://ffmpeg.org/)
 
@@ -66,7 +65,3 @@ spine-cg-render 用于将 Unity 游戏中的 Spine 2D 骨骼动画资源（骨�
 - 本仓库不包含任何游戏素材。请确保仅对您合法持有的游戏文件使用本工具，并遵守所在地的法律法规与游戏许可条款。
 - 工具已在真实游戏环境中完成验证：15 个场景、96 段动画、约 15,500 帧。
 - 实现原理与注意事项详见 [docs/pipeline.md](docs/pipeline.md)。
-
-## 许可证
-
-MIT，详见 [LICENSE](LICENSE)。

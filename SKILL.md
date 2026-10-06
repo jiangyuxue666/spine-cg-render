@@ -2,8 +2,6 @@
 name: spine-cg-render
 description: Use when rendering Spine CG animations from games to video.
 version: 1.0.0
-author: Hermes Agent
-license: MIT
 metadata:
   hermes:
     tags: [game-assets, unity, spine, animation, video-render, cg-extraction]
