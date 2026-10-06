@@ -7,7 +7,7 @@
 Render Spine skeletal animations from Unity games into mp4 — frame-by-frame with the official spine-webgl runtime.
 
 ![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
-![Python](https://img.shields.io/badge/python-3.x-3776AB?style=flat-square)
+![Python](https://img.shields.io/badge/python-3%2Ex-3776AB?style=flat-square)
 ![ffmpeg](https://img.shields.io/badge/ffmpeg-required-05874b?style=flat-square)
 
 </div>
