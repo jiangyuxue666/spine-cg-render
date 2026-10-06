@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>spine render</title></head>
+<body style="margin:0;background:#000;overflow:hidden">
+<canvas id="c" width="800" height="600"></canvas>
+<script src="/web/spine-webgl.js"></script>
+<script>
+(function(){
+  const R = window.R = { ready:false, error:null, info:null, animInfo:null };
+
+  R.init = async function(opts){
+    try {
+      R.ready = false; R.error = null;
+      const dir = opts.dir, name = opts.name;
+      const cw = opts.w || 800, ch = opts.h || 600;  // initial probe size; auto-adjusted below
+      const flipCam = !!opts.flipCam;
+      const flipTex = !!opts.flipTex;
+      const canvas = document.getElementById('c');
+      canvas.width = cw; canvas.height = ch;
+      const gl = canvas.getContext('webgl', {alpha:false, preserveDrawingBuffer:true, premultipliedAlpha:true, antialias:false});
+      if (!gl) throw new Error('no webgl');
+      gl.viewport(0,0,cw,ch);
+      gl.clearColor(0,0,0,1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      const respJ = await fetch(dir + '/' + name + '.json');
+      if (!respJ.ok) throw new Error('json fetch ' + respJ.status);
+      const jsonTxt = await respJ.text();
+      const respA = await fetch(dir + '/' + name + '.atlas');
+      if (!respA.ok) throw new Error('atlas fetch ' + respA.status);
+      const atlasTxt = await respA.text();
+
+      const pageNames = [];
+      for (const line of atlasTxt.split(/\r?\n/)) {
+        const m = /^(\S+\.(png|jpg|jpeg|webp))\s*$/.exec(line.trim());
+        if (m) pageNames.push(m[1]);
+      }
+      const imgs = {};
+      await Promise.all(pageNames.map(p => new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => { imgs[p] = im; res(); };
+        im.onerror = () => rej(new Error('failed to load image ' + p));
+        im.src = dir + '/' + p;
+      })));
+      function texSource(p) {
+        const im = imgs[p];
+        if (!flipTex) return im;
+        const c2 = document.createElement('canvas');
+        c2.width = im.width; c2.height = im.height;
+        const g2 = c2.getContext('2d');
+        g2.translate(0, im.height); g2.scale(1,-1);
+        g2.drawImage(im, 0, 0);
+        return c2;
+      }
+      const atlas = new spine.TextureAtlas(atlasTxt);
+      for (const page of Array.from(atlas.pages)) {
+        const src = texSource(page.name);
+        const tex = new spine.GLTexture(gl, src);
+        page.setTexture(tex);
+      }
+      R.atlas = atlas;
+      const loader = new spine.AtlasAttachmentLoader(atlas);
+      const json = new spine.SkeletonJson(loader);
+      const data = json.readSkeletonData(jsonTxt);
+      const skeleton = new spine.Skeleton(data);
+      skeleton.setToSetupPose();
+      const state = new spine.AnimationState(new spine.AnimationStateData(data));
+      const renderer = new spine.SceneRenderer(canvas, gl, false);
+      R.skeleton = skeleton; R.state = state; R.renderer = renderer;
+      R.canvas = canvas; R.gl = gl; R.data = data;
+
+      // bounds across all animations
+      const off = new spine.Vector2(), size = new spine.Vector2();
+      const b = {x0: 1e9, y0: 1e9, x1: -1e9, y1: -1e9};
+      function sampleBounds() {
+        skeleton.updateWorldTransform(spine.Physics.update);
+        skeleton.getBounds(off, size);
+        if (size.x > 0.0001 || size.y > 0.0001) {
+          if (off.x < b.x0) b.x0 = off.x;
+          if (off.y < b.y0) b.y0 = off.y;
+          if (off.x + size.x > b.x1) b.x1 = off.x + size.x;
+          if (off.y + size.y > b.y1) b.y1 = off.y + size.y;
+        }
+      }
+      skeleton.setToSetupPose(); sampleBounds();
+      for (const anim of data.animations) {
+        const dur = Math.max(anim.duration, 0.016);
+        state.clearTracks(); skeleton.setToSetupPose();
+        const e0 = state.setAnimation(0, anim.name, false);
+        if (e0) e0.mixDuration = 0;
+        const samples = Math.min(48, Math.max(8, Math.ceil(dur * 8)));
+        for (let i = 1; i <= samples; i++) {
+          state.update(dur / samples); state.apply(skeleton);
+          sampleBounds();
+        }
+      }
+      state.clearTracks(); skeleton.setToSetupPose(); skeleton.updateWorldTransform(spine.Physics.update);
+      if (b.x0 > b.x1) sampleBounds();
+
+      let fx0, fy0, fx1, fy1, pad;
+      if (opts.frame === 'viewport' && data.width > 0 && data.height > 0) {
+        pad = 0.0; fx0 = data.x; fy0 = data.y; fx1 = data.x + data.width; fy1 = data.y + data.height;
+      } else {
+        pad = 0.07; fx0 = b.x0; fy0 = b.y0; fx1 = b.x1; fy1 = b.y1;
+      }
+      const bw = Math.max(fx1 - fx0, 1), bh = Math.max(fy1 - fy0, 1);
+      const aspect = bw / bh;
+      const maxSide = opts.maxSide || 1440;
+      let cw2, ch2;
+      if (aspect >= 1) { cw2 = maxSide; ch2 = Math.max(2, Math.round(maxSide / aspect / 2) * 2); }
+      else { ch2 = maxSide; cw2 = Math.max(2, Math.round(maxSide * aspect / 2) * 2); }
+      canvas.width = cw2; canvas.height = ch2;
+      gl.viewport(0, 0, cw2, ch2);
+      const sc = Math.min(cw2 / (bw * (1 + 2*pad)), ch2 / (bh * (1 + 2*pad)));
+      const vw = cw2 / sc, vh = ch2 / sc;
+      const cam = renderer.camera;
+      cam.position.x = (fx0 + fx1) / 2;
+      cam.position.y = (fy0 + fy1) / 2;
+      cam.position.z = 0;
+      cam.up.x = 0; cam.up.y = flipCam ? -1 : 1; cam.up.z = 0;
+      cam.setViewport(vw, vh);
+      cam.update();
+
+      R.animInfo = data.animations.map(a => ({name: a.name, duration: a.duration}));
+      R.bounds = b;
+      R.info = {dir:dir, name:name, canvas:[cw2,ch2], viewport:[vw,vh], bounds:[fx0,fy0,fx1,fy1], anims:R.animInfo};
+      R.ready = true;
+      return 'ready';
+    } catch (e) {
+      R.error = String(e && e.stack || e);
+      R.ready = false;
+      throw e;
+    }
+  };
+
+  R.draw = function(){
+    const gl = R.gl;
+    gl.clearColor(0,0,0,1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    const r = R.renderer;
+    r.begin();
+    r.drawSkeleton(R.skeleton, true);
+    r.end();
+  };
+
+  R.post = async function(rel, dataUrl){
+    const idx = dataUrl.indexOf(',');
+    const b64 = dataUrl.substring(idx+1);
+    const bin = atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    const res = await fetch('/save?p=' + encodeURIComponent(rel), {method:'POST', body: arr});
+    if (!res.ok) throw new Error('save failed ' + res.status);
+  };
+
+  R.canvasBlob = function(){
+    return new Promise((res, rej) => R.canvas.toBlob(b => b ? res(b) : rej(new Error('toBlob null')), 'image/png'));
+  };
+  R.postBlob = async function(rel, blob){
+    let lastErr = null;
+    for (let k = 0; k < 6; k++) {
+      try {
+        const res = await fetch('/save?p=' + encodeURIComponent(rel), {method:'POST', body: blob});
+        if (res.ok) {
+          if (k > 0) { R.__chunk.retries = (R.__chunk.retries||0) + k; }
+          return true;
+        }
+        lastErr = new Error('HTTP ' + res.status);
+      } catch (e) {
+        lastErr = e;
+      }
+      await new Promise(r => setTimeout(r, 250 * (k + 1)));
+    }
+    throw lastErr || new Error('post failed');
+  };
+
+  // Legacy single-shot chunk (BLOCKS the js() call — keep ranges small).
+  // Prefer R.renderChunkBg + polling for real renders.
+  R.renderChunk = async function(animName, fps, outdir, start, end){
+    const st = R.state, sk = R.skeleton;
+    st.clearTracks();
+    sk.setToSetupPose();
+    const entry = st.setAnimation(0, animName, false);
+    if (entry) { entry.mixDuration = 0; entry.alpha = 1; }
+    const dt = 1 / fps;
+    for (let i = 0; i < start; i++) { st.update(dt); st.apply(sk); sk.updateWorldTransform(spine.Physics.update); }
+    let posted = 0;
+    for (let i = start; i < end; i++) {
+      st.update(dt); st.apply(sk); sk.updateWorldTransform(spine.Physics.update);
+      R.draw();
+      await R.post(outdir + '/f' + String(i).padStart(4,'0') + '.png', R.canvas.toDataURL('image/png'));
+      posted++;
+    }
+    return posted;
+  };
+
+  R.__chunk = {running:false, done:0, total:0, start:0, end:0, err:null, anim:null, retries:0};
+  R.renderChunkBg = function(animName, fps, outdir, start, end){
+    const c = R.__chunk;
+    if (c.running) return 'busy';
+    c.running = true; c.err = null; c.done = 0; c.total = end - start; c.start = start; c.end = end; c.anim = animName;
+    (async () => {
+      try {
+        const st = R.state, sk = R.skeleton;
+        st.clearTracks();
+        sk.setToSetupPose();
+        const entry = st.setAnimation(0, animName, false);
+        if (entry) { entry.mixDuration = 0; entry.alpha = 1; }
+        const dt = 1 / fps;
+        for (let i = 0; i < start; i++) { st.update(dt); st.apply(sk); sk.updateWorldTransform(spine.Physics.update); if (i % 250 === 249) await new Promise(r=>setTimeout(r,0)); }
+        for (let i = start; i < end; i++) {
+          st.update(dt); st.apply(sk); sk.updateWorldTransform(spine.Physics.update);
+          R.draw();
+          await R.postBlob(outdir + '/f' + String(i).padStart(4,'0') + '.png', await R.canvasBlob());
+          c.done++;
+        }
+      } catch (e) {
+        c.err = String(e && e.message || e);
+      }
+      c.running = false;
+    })();
+    return 'started';
+  };
+
+  // render one frame at time t (seconds); returns dataURL (caller can post it)
+  R.grabFrame = async function(animName, fps, t){
+    const st = R.state, sk = R.skeleton;
+    st.clearTracks();
+    sk.setToSetupPose();
+    const entry = st.setAnimation(0, animName, false);
+    if (entry) entry.mixDuration = 0;
+    const n = Math.round(t * fps);
+    const dt = 1 / fps;
+    for (let i = 0; i < n; i++) { st.update(dt); st.apply(sk); }
+    sk.updateWorldTransform(spine.Physics.update);
+    R.draw();
+    return R.canvas.toDataURL('image/png');
+  };
+
+  R.postFrame = async function(rel, dataUrl){
+    await R.post(rel, dataUrl);
+    return 'ok';
+  };
+})();
+</script>
+</body>
+</html>

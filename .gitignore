@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.tmp
+*.tmp[0-9]*
+serve.log
+
+# runtime artifacts
+frames/
+output/
+spine_assets/
+web/
+*.mp4
