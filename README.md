@@ -52,7 +52,7 @@ Render Spine skeletal animations from Unity games into mp4 — frame-by-frame wi
 ├── scripts/          解包 · 服务器 · 渲染页 · 驱动 · 编码 · 说明生成
 ├── docs/pipeline.md  技术细节与实战踩坑（必读）
 ├── examples/         素材格式说明（不含版权资源）
-└── assets/           徽章图片（PNG 本地文件，任何预览器都能正常显示）
+└── assets/           README 徽章图片（PNG）
 ```
 
 ## 说明
